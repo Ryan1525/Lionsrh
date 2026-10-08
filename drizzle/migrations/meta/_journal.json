@@ -1,0 +1,41 @@
+{
+  "version": "7",
+  "dialect": "postgresql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "7",
+      "when": 1791374116839,
+      "tag": "0000_create_hr_schema_and_seed",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1791400334688,
+      "tag": "0001_link_documents_to_rh_records",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1791401304893,
+      "tag": "0002_restrict_rh_and_attachment_access_to_authorized_operators",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1791401343205,
+      "tag": "0003_lock_rh_authorization_grants",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1791402266271,
+      "tag": "0004_add_monthly_employee_benefits",
+      "breakpoints": true
+    }
+  ]
+}
