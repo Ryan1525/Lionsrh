@@ -37,7 +37,21 @@ export const saveRhRecord = createServerFn({method:'POST'}).middleware([requireS
 })
 export const terminateEmployee = createServerFn({method:'POST'}).middleware([requireSupabaseAuth]).inputValidator(z.object({id:employee,data_desligamento:date,motivo_desligamento:text})).handler(async({data,context})=>{const {id,...values}=data;const result=await context.supabase.from('funcionarios').update({...values,status:'desligado'}).eq('id',id).select('id').single();if(result.error)throw new Error('Não foi possível registrar o desligamento.');return result.data})
 export const deleteRhRecord = createServerFn({method:'POST'}).middleware([requireSupabaseAuth]).inputValidator(z.object({table:tables,id:employee})).handler(async({data,context})=>{
- if(data.table==='funcionarios')throw new Error('Utilize o desligamento para preservar o histórico.');
+ if(data.table==='funcionarios'){
+  // Only terminated employees can be deleted; active ones must go through the termination flow first.
+  const target=await context.supabase.from('funcionarios').select('id,status').eq('id',data.id).single();
+  if(target.error||!target.data)throw new Error('Funcionário não encontrado.');
+  if(target.data.status!=='desligado')throw new Error('Registre o desligamento antes de excluir o funcionário.');
+  // Every attachment belongs to its employee, so remove all stored files before the cascade drops their metadata.
+  const attachments=await context.supabase.from('documentos').select('id,storage_path').eq('funcionario_id',data.id);
+  if(attachments.error)throw new Error('Não foi possível consultar os anexos.');
+  const paths=(attachments.data??[]).flatMap(a=>a.storage_path?[a.storage_path]:[]);
+  if(paths.length){const removed=await context.supabase.storage.from('documentos').remove(paths);if(removed.error)throw new Error('Não foi possível remover os anexos.');}
+  // Férias, atestados, declarações, folha and documentos rows are removed by the on-delete cascade.
+  const r=await context.supabase.from('funcionarios').delete().eq('id',data.id).eq('status','desligado');
+  if(r.error)throw new Error('Não foi possível excluir o funcionário.');
+  return {ok:true}
+ }
   if(data.table!=='documentos'){const modulo=data.table==='folha_pagamento'?'folha':data.table;const attachments=await context.supabase.from('documentos').select('id,storage_path').eq('modulo',modulo).eq('registro_id',data.id);if(attachments.error)throw new Error('Não foi possível consultar os anexos.');const paths=(attachments.data??[]).flatMap(a=>a.storage_path?[a.storage_path]:[]);if(paths.length){const removed=await context.supabase.storage.from('documentos').remove(paths);if(removed.error)throw new Error('Não foi possível remover os anexos.');}if(attachments.data?.length){const deleted=await context.supabase.from('documentos').delete().in('id',attachments.data.map(a=>a.id));if(deleted.error)throw new Error('Não foi possível excluir os anexos.');}}
  let path: string | null=null;
  if(data.table==='documentos'){const r=await context.supabase.from('documentos').select('storage_path').eq('id',data.id).single();if(r.error)throw new Error('Documento não encontrado.');path=r.data.storage_path;}
